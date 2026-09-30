@@ -5,7 +5,7 @@ import statistics
 # ---------------------------------------------------------
 # CONFIGURACIÓN
 # ---------------------------------------------------------
-TARGET_IP = "192.168.1.101"  # IP del ESP32
+TARGET_IP = "192.168.1.101"  # IP del ESP32 físico
 TARGET_PORT = 5005
 NUM_PACKETS = 1000           # Cantidad de paquetes para el test
 FREQUENCY_HZ = 50            # 50 Hz = 1 paquete cada 20ms (Estándar VSSS)
