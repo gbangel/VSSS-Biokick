@@ -1,13 +1,12 @@
+import network
 import socket
 import time
-import network
-import select
 
 # ---------------------------------------------------------
-# CONFIGURACIÓN DE RED Y SOCKET
+# CREDENCIALES Y RED NETGEAR ORBI RBR50v2
 # ---------------------------------------------------------
-WIFI_SSID = "VSSS_TEAM_NET"
-WIFI_PASS = "tu_contrasena_wifi"
+WIFI_SSID = "ORBI15"
+WIFI_PASS = "freshraven713"
 
 ESP_IP = "192.168.1.101"
 SUBNET = "255.255.255.0"
@@ -19,38 +18,55 @@ UDP_PORT = 5005
 
 def conectar_wifi():
     wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    # Configurar IP estática para evitar latencia de DHCP
-    wlan.ifconfig((ESP_IP, SUBNET, GATEWAY, DNS))
 
-    if not wlan.isconnected():
-        print(f"Conectando a la red {WIFI_SSID}...")
-        wlan.connect(WIFI_SSID, WIFI_PASS)
-        timeout = 10
-        while not wlan.isconnected() and timeout > 0:
-            time.sleep(1)
-            timeout -= 1
+    try:
+        wlan.disconnect()
+    except Exception:
+        pass
+
+    wlan.active(False)
+    time.sleep(1)
+
+    wlan.active(True)
+    time.sleep(0.5)
+
+    # ---------------------------------------------------------
+    # ¡PASO CRÍTICO!: DESACTIVAR MODO DE AHORRO DE ENERGÍA
+    # ---------------------------------------------------------
+    try:
+        wlan.config(pm=wlan.PM_NONE)
+        print("Modo de ahorro de energía Wi-Fi DESACTIVADO (PM_NONE).")
+    except Exception as e:
+        print("Advertencia: No se pudo configurar PM_NONE:", e)
+
+    print(f"Conectando a la red Wi-Fi: '{WIFI_SSID}'...")
+    wlan.connect(WIFI_SSID, WIFI_PASS)
+
+    timeout = 15
+    while not wlan.isconnected() and timeout > 0:
+        time.sleep(1)
+        timeout -= 1
 
     if wlan.isconnected():
-        print("Conexión Wi-Fi establecida con éxito.")
-        print("Configuración de red:", wlan.ifconfig())
+        wlan.ifconfig((ESP_IP, SUBNET, GATEWAY, DNS))
+        print("\n¡Conexión exitosa!")
+        print("Configuración de red asignada:", wlan.ifconfig())
         return True
     else:
-        print("Error al conectar a la red Wi-Fi.")
+        print("\nError: No se pudo conectar al Wi-Fi.")
         return False
 
 
 def iniciar_servidor_udp():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ESP_IP, UDP_PORT))
-    # Timeout no bloqueante para el socket
-    sock.settimeout(0.01)
-    print(f"Escuchando paquetes UDP en {ESP_IP}:{UDP_PORT}")
+    sock.settimeout(0.005)
+    print(f"Servidor UDP escuchando en {ESP_IP}:{UDP_PORT}")
     return sock
 
 
 # ---------------------------------------------------------
-# BUCLE PRINCIPAL (MAIN LOOP)
+# BUCLE PRINCIPAL
 # ---------------------------------------------------------
 if conectar_wifi():
     udp_socket = iniciar_servidor_udp()
@@ -59,12 +75,7 @@ if conectar_wifi():
         try:
             data, addr = udp_socket.recvfrom(1024)
             if data:
-                # Echo inmediato del mismo paquete recibido
+                # Responder inmediatamente para medición de latencia RTT
                 udp_socket.sendto(data, addr)
-
-                # Aquí irá el desglose de datos para el PID / Motores
-                # ej: mensaje = data.decode('utf-8')
-
         except OSError:
-            # Timeout del socket cuando no hay datos entrantes (esperado)
             pass
